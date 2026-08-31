@@ -1,0 +1,8 @@
+[package]
+name = "nitrodeck-hardware"
+version = "0.1.0"
+edition = "2021"
+description = "Adapters somente-leitura para sensores de hardware (procfs/sysfs), usados pelo NitroDeck Linux"
+
+[dependencies]
+nitrodeck-core = { path = "../nitrodeck-core" }

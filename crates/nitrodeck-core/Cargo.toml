@@ -1,0 +1,8 @@
+[package]
+name = "nitrodeck-core"
+version = "0.1.0"
+edition = "2021"
+description = "Tipos compartilhados do NitroDeck Linux (providers, status, snapshot)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
