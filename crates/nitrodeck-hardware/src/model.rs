@@ -65,3 +65,25 @@ pub fn revoke_risk() -> Result<(), String> {
 pub fn controls_allowed() -> bool {
     is_confirmed() || risk_accepted()
 }
+
+/// Instala o driver linuwu_sense (via pkexec + DKMS) neste PC. Só existe
+/// como ação explícita disparada pela pessoa na tela — nunca é chamado
+/// automaticamente fora do instalador do pacote, e mesmo lá só roda
+/// silenciosamente no modelo confirmado.
+pub fn install_driver() -> Result<(), String> {
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .map_err(|_| "Não foi possível determinar o usuário atual.".to_string())?;
+    let output = std::process::Command::new("pkexec")
+        .arg("/usr/lib/nitrodeck/install-linuwu-sense.sh")
+        .arg(&user)
+        .output()
+        .map_err(|e| format!("Falha ao executar pkexec: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Falha ao instalar o driver: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
+}

@@ -36,11 +36,19 @@
     "linux": {
       "deb": {
         "depends": ["polkitd | policykit-1"],
+        "recommends": ["dkms", "linux-headers-amd64 | linux-headers-generic"],
         "files": {
           "/usr/lib/nitrodeck/nitrodeck-fan-watchdog.sh": "../packaging/nitrodeck-fan-watchdog.sh",
           "/usr/lib/systemd/user/nitrodeck-fan-watchdog.service": "../packaging/nitrodeck-fan-watchdog.service",
           "/etc/xdg/autostart/nitrodeck-linux.desktop": "../packaging/nitrodeck-autostart.desktop",
-          "/usr/bin/nitrodeck": "../packaging/nitrodeck-cli"
+          "/usr/bin/nitrodeck": "../packaging/nitrodeck-cli",
+          "/usr/lib/nitrodeck/install-linuwu-sense.sh": "../packaging/install-linuwu-sense.sh",
+          "/usr/src/nitrodeck-linuwu-sense-1.0.0/linuwu_sense.c": "../driver/linuwu-sense/linuwu_sense.c",
+          "/usr/src/nitrodeck-linuwu-sense-1.0.0/Makefile": "../driver/linuwu-sense/Makefile",
+          "/usr/src/nitrodeck-linuwu-sense-1.0.0/dkms.conf": "../driver/linuwu-sense/dkms.conf",
+          "/usr/share/nitrodeck/linuwu-sense-shutdown.service": "../driver/linuwu-sense/linuwu-sense-shutdown.service",
+          "/usr/share/doc/nitrodeck-linux/linuwu-sense-LICENSE": "../driver/linuwu-sense/LICENSE",
+          "/usr/share/doc/nitrodeck-linux/linuwu-sense-ATTRIBUTION.md": "../driver/linuwu-sense/ATTRIBUTION.md"
         },
         "postInstallScript": "../packaging/postinst.sh",
         "postRemoveScript": "../packaging/postrm.sh"

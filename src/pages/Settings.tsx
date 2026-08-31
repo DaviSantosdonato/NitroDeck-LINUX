@@ -93,16 +93,8 @@ function UnvalidatedModelCard({ snap }: { snap: HardwareSnapshot }) {
   }
 
   if (!snap.system.linuwuSensePresent) {
-    return (
-      <Card>
-        <CardHeader title="Controles de hardware" />
-        <p className="text-xs text-[var(--text-2)] leading-relaxed">
-          O driver <code className="text-[var(--text-1)]">linuwu_sense</code> não foi detectado neste PC — sem ele
-          não existe nada pra liberar. Esta seção fica só leitura, o que é esperado fora de um Acer Nitro/Predator
-          com o driver instalado.
-        </p>
-      </Card>
-    );
+    const isAcer = (snap.system.vendor ?? "").toLowerCase().includes("acer");
+    return isAcer ? <InstallDriverCard snap={snap} /> : <NoDriverCard />;
   }
 
   return (
@@ -150,6 +142,79 @@ function UnvalidatedModelCard({ snap }: { snap: HardwareSnapshot }) {
           <AlertTriangle size={13} />
           {error}
         </div>
+      )}
+    </Card>
+  );
+}
+
+function NoDriverCard() {
+  return (
+    <Card>
+      <CardHeader title="Controles de hardware" />
+      <p className="text-xs text-[var(--text-2)] leading-relaxed">
+        O driver <code className="text-[var(--text-1)]">linuwu_sense</code> não foi detectado neste PC — sem ele não
+        existe nada pra liberar. Esta seção fica só leitura, o que é esperado fora de um Acer Nitro/Predator.
+      </p>
+    </Card>
+  );
+}
+
+function InstallDriverCard({ snap }: { snap: HardwareSnapshot }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  async function install() {
+    setBusy(true);
+    setError(null);
+    setOk(false);
+    try {
+      await invoke("install_hardware_driver");
+      setOk(true);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Instalar driver de hardware (linuwu_sense)" />
+      <div className="flex items-start gap-3 rounded-xl p-4" style={{ background: "rgba(245,158,11,0.1)" }}>
+        <ShieldAlert size={18} className="shrink-0 mt-0.5" style={{ color: "var(--warn)" }} />
+        <div className="text-xs leading-relaxed" style={{ color: "var(--text-1)" }}>
+          <p className="mb-2">
+            Detectamos um Acer (<strong>{snap.system.productName ?? "modelo desconhecido"}</strong>) mas o driver{" "}
+            <code className="text-[var(--text-0)]">linuwu_sense</code> ainda não está instalado. Ele compila um
+            módulo de kernel que fala diretamente com o firmware da placa-mãe (WMI/EC) — validamos isso a fundo só
+            no Nitro ANV15-52. Em outro modelo Acer, pode funcionar bem, funcionar parcialmente, ou nada acontecer;
+            é uma decisão sua instalar. Depois de instalado, o controle de hardware em si ainda fica bloqueado até
+            você confirmar de novo abaixo (ou automático, se o modelo bater).
+          </p>
+          <button
+            onClick={install}
+            disabled={busy}
+            className="text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50"
+            style={{ background: "var(--warn)", color: "#1a1400" }}
+          >
+            {busy ? "Instalando (pode pedir sua senha)..." : "Instalar driver mesmo assim"}
+          </button>
+        </div>
+      </div>
+      {error && (
+        <div
+          className="mt-3 flex items-center gap-2 text-xs rounded-lg px-3 py-2"
+          style={{ background: "rgba(248,113,113,0.12)", color: "var(--bad)" }}
+        >
+          <AlertTriangle size={13} />
+          {error}
+        </div>
+      )}
+      {ok && !error && (
+        <p className="mt-3 text-xs" style={{ color: "var(--good)" }}>
+          Driver instalado. Pode levar alguns segundos até as telas atualizarem.
+        </p>
       )}
     </Card>
   );

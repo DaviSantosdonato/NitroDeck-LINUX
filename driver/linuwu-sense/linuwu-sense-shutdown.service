@@ -1,0 +1,10 @@
+[Unit]
+Description=Descarrega o linuwu_sense de forma limpa no desligamento
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStop=/sbin/rmmod linuwu_sense
+
+[Install]
+WantedBy=multi-user.target

@@ -78,6 +78,11 @@ fn revoke_hardware_risk() -> Result<(), String> {
     nitrodeck_hardware::model::revoke_risk()
 }
 
+#[tauri::command]
+fn install_hardware_driver() -> Result<(), String> {
+    nitrodeck_hardware::model::install_driver()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -97,7 +102,8 @@ pub fn run() {
             set_cpu_turbo,
             set_cpu_power_limits,
             accept_hardware_risk,
-            revoke_hardware_risk
+            revoke_hardware_risk,
+            install_hardware_driver
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
