@@ -254,6 +254,8 @@ pub struct ProcessEntry {
     pub mem_percent: f64,
     pub mem_mb: f64,
     pub owned_by_user: bool,
+    /// Teto de memória aplicado por nós via cgroup, se houver (MB).
+    pub memory_limit_mb: Option<u32>,
 }
 
 #[derive(Serialize, Clone, Debug)]

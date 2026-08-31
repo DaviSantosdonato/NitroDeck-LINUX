@@ -158,6 +158,7 @@ export interface ProcessEntry {
   memPercent: number;
   memMb: number;
   ownedByUser: boolean;
+  memoryLimitMb: number | null;
 }
 
 export interface ProcessesState {

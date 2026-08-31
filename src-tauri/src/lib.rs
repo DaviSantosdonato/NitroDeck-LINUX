@@ -54,6 +54,11 @@ fn kill_process(pid: u32) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_process_memory_limit(pid: u32, memory_mb: Option<u32>) -> Result<(), String> {
+    nitrodeck_hardware::processes::set_memory_limit(pid, memory_mb)
+}
+
+#[tauri::command]
 fn launch_with_limits(
     command: String,
     memory_mb: Option<u32>,
@@ -109,7 +114,8 @@ pub fn run() {
             accept_hardware_risk,
             revoke_hardware_risk,
             install_hardware_driver,
-            set_generic_fan_pwm
+            set_generic_fan_pwm,
+            set_process_memory_limit
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

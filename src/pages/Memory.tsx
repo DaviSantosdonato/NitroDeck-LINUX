@@ -2,12 +2,14 @@ import type { HardwareSnapshot } from "../types/hardware";
 import { Card, CardHeader } from "../components/Card";
 import { Chart } from "../components/Chart";
 import { StatusPill } from "../components/StatusPill";
+import { ProcessTable } from "../components/ProcessTable";
 import { mb } from "../lib/format";
 
 export function MemoryPage({ snap }: { snap: HardwareSnapshot }) {
-  const { memory } = snap;
+  const { memory, processes } = snap;
   const memPct = (memory.usedMb / memory.totalMb) * 100;
   const swapPct = memory.swapTotalMb ? (memory.swapUsedMb / memory.swapTotalMb) * 100 : 0;
+  const byMemory = [...processes.processes].sort((a, b) => b.memMb - a.memMb);
 
   return (
     <div className="space-y-5">
@@ -32,6 +34,15 @@ export function MemoryPage({ snap }: { snap: HardwareSnapshot }) {
           <Stat label="Total" value={mb(memory.swapTotalMb)} />
           <Stat label="Uso" value={`${swapPct.toFixed(1)}%`} />
         </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Limitar memória de processos"
+          subtitle="Ordenado por consumo de RAM — mesmo mecanismo de cgroups da aba Processos, sem root"
+          right={<StatusPill status={processes.meta.status} compact />}
+        />
+        <ProcessTable processes={byMemory} />
       </Card>
     </div>
   );

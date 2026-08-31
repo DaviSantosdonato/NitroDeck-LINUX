@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { AccentProvider } from "./lib/AccentContext";
 import { useHardwareSnapshot } from "./lib/useSnapshot";
+import { useHardwareEvents } from "./lib/useHardwareEvents";
 import { Overview } from "./pages/Overview";
 import { CpuPage } from "./pages/Cpu";
 import { GpuPage } from "./pages/Gpu";
@@ -31,6 +32,7 @@ export type PageId =
 function AppShell() {
   const [page, setPage] = useState<PageId>("overview");
   const snap = useHardwareSnapshot(2000);
+  const events = useHardwareEvents(snap);
 
   return (
     <div className="flex h-screen w-screen">
@@ -38,7 +40,7 @@ function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar page={page} />
         <main className="flex-1 overflow-y-auto p-6">
-          {page === "overview" && <Overview snap={snap} />}
+          {page === "overview" && <Overview snap={snap} events={events} />}
           {page === "cpu" && <CpuPage snap={snap} />}
           {page === "gpu" && <GpuPage snap={snap} />}
           {page === "memory" && <MemoryPage snap={snap} />}

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Executado pelo dpkg depois de desempacotar o .deb. Ativa as partes que
+# Executado pelo gerenciador de pacotes (dpkg/.deb ou rpm/.rpm) depois de
+# desempacotar. Ativa as partes que
 # "colam" o NitroDeck no sistema: comando de terminal, abrir sozinho no
 # login, e o watchdog de segurança das ventoinhas (que só age em hardware
 # confirmado — em qualquer outro PC ele fica parado sem fazer nada).

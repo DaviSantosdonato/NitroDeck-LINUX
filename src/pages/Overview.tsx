@@ -10,9 +10,12 @@ import {
   Wifi,
 } from "lucide-react";
 import type { HardwareSnapshot, TempSensor } from "../types/hardware";
+import type { HardwareEvent } from "../components/EventFeed";
 import { MetricTile } from "../components/MetricTile";
 import { Card, CardHeader } from "../components/Card";
 import { StatusPill } from "../components/StatusPill";
+import { Spotlight } from "../components/Spotlight";
+import { EventFeed } from "../components/EventFeed";
 import { celsius, pct, watts } from "../lib/format";
 
 function primaryGpuName(snap: HardwareSnapshot): string | null {
@@ -21,7 +24,7 @@ function primaryGpuName(snap: HardwareSnapshot): string | null {
   return null;
 }
 
-export function Overview({ snap }: { snap: HardwareSnapshot }) {
+export function Overview({ snap, events }: { snap: HardwareSnapshot; events: HardwareEvent[] }) {
   const memPct = (snap.memory.usedMb / snap.memory.totalMb) * 100;
   const machineName = [snap.system.vendor, snap.system.productName].filter(Boolean).join(" ") || "Notebook Linux";
   const ramGb = snap.memory.totalMb > 0 ? `${Math.round(snap.memory.totalMb / 1000)} GB RAM` : null;
@@ -29,17 +32,15 @@ export function Overview({ snap }: { snap: HardwareSnapshot }) {
 
   return (
     <div className="space-y-5">
-      <Card>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="text-xs text-[var(--text-2)] mb-1">{machineName}</div>
-            <div className="text-lg font-semibold">{specLine || "Identificando hardware..."}</div>
-          </div>
-          <div className="flex gap-2">
-            <StatusPill status="read-only" />
-          </div>
+      <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+        <div>
+          <div className="text-xs text-[var(--text-2)]">{machineName}</div>
+          <div className="text-sm font-medium text-[var(--text-1)]">{specLine || "Identificando hardware..."}</div>
         </div>
-      </Card>
+        <StatusPill status="read-only" />
+      </div>
+
+      <ThermalSpotlight snap={snap} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricTile
@@ -125,7 +126,39 @@ export function Overview({ snap }: { snap: HardwareSnapshot }) {
       </div>
 
       <TemperaturesCard snap={snap} />
+
+      <EventFeed
+        events={events}
+        title="Atividade"
+        subtitle="Mudanças reais observadas nesta sessão"
+        emptyLabel="Nenhum evento ainda — trocas de perfil, modo de ventoinha e alertas de temperatura aparecem aqui conforme acontecem."
+      />
     </div>
+  );
+}
+
+function ThermalSpotlight({ snap }: { snap: HardwareSnapshot }) {
+  const { sensors } = snap.temperatures;
+  const maxTemp = sensors.length > 0 ? Math.max(...sensors.map((s) => s.tempC)) : null;
+  const suggestion = maxTemp !== null ? suggestedFanPercent(maxTemp) : null;
+
+  const fanStatus =
+    snap.fans.mode === "manual"
+      ? `Ventoinha em manual (${snap.fans.cpuPercent ?? "—"}% CPU / ${snap.fans.gpuPercent ?? "—"}% GPU)`
+      : "Ventoinha em automático (firmware)";
+
+  return (
+    <Spotlight
+      eyebrow="Status térmico"
+      value={maxTemp !== null ? maxTemp.toFixed(0) : "—"}
+      unit={maxTemp !== null ? "°C" : undefined}
+      icon={<Thermometer size={18} />}
+      description={
+        maxTemp === null
+          ? "Nenhum sensor de temperatura disponível."
+          : `${fanStatus}. Sugestão: ${suggestion === 0 ? "automático já é suficiente" : `~${suggestion}% de ventoinha`}.`
+      }
+    />
   );
 }
 
@@ -245,8 +278,6 @@ function TempGroupCard({ name, sensors }: { name: string; sensors: TempSensor[] 
 
 function TemperaturesCard({ snap }: { snap: HardwareSnapshot }) {
   const { sensors } = snap.temperatures;
-  const maxTemp = sensors.length > 0 ? Math.max(...sensors.map((s) => s.tempC)) : null;
-  const suggestion = maxTemp !== null ? suggestedFanPercent(maxTemp) : null;
   const groups = groupSensors(sensors);
 
   return (
@@ -260,27 +291,11 @@ function TemperaturesCard({ snap }: { snap: HardwareSnapshot }) {
       {sensors.length === 0 ? (
         <p className="text-xs text-[var(--text-2)]">Nenhum sensor de temperatura encontrado neste sistema.</p>
       ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-            {groups.map((g) => (
-              <TempGroupCard key={g.name} name={g.name} sensors={g.sensors} />
-            ))}
-          </div>
-
-          {suggestion !== null && (
-            <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2.5" style={{ background: "var(--bg-2)" }}>
-              <Thermometer size={13} className="mt-0.5 shrink-0 text-[var(--text-2)]" />
-              <p className="text-[var(--text-2)] leading-relaxed">
-                Ponto mais quente agora: <strong className="text-[var(--text-0)]">{maxTemp?.toFixed(0)}°C</strong>.
-                Sugestão nossa (estimativa, não uma tabela oficial da Acer):{" "}
-                <strong style={{ color: "var(--accent)" }}>
-                  {suggestion === 0 ? "automático já é suficiente" : `~${suggestion}% de ventoinha`}
-                </strong>{" "}
-                para manter numa faixa saudável. Ajuste manual fica na aba Ventoinhas.
-              </p>
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {groups.map((g) => (
+            <TempGroupCard key={g.name} name={g.name} sensors={g.sensors} />
+          ))}
+        </div>
       )}
     </Card>
   );
