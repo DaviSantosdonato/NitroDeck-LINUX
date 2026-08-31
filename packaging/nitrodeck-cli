@@ -1,0 +1,5 @@
+#!/bin/bash
+# Abre o NitroDeck Linux em segundo plano, devolvendo o terminal na hora
+# (igual `code`/`claude`) em vez de travar o shell.
+nohup /usr/bin/nitrodeck-linux "$@" > /dev/null 2>&1 &
+disown

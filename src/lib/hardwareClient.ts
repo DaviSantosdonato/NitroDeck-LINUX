@@ -13,6 +13,7 @@ import type {
   ProviderMeta,
   Sample,
   StorageState,
+  SystemInfo,
   TemperaturesState,
   ToggleFeature,
 } from "../types/hardware";
@@ -27,6 +28,7 @@ type RawGpuState = Omit<GpuState, "history">;
 type RawMemoryState = Omit<MemoryState, "history">;
 
 interface RawHardwareSnapshot {
+  system: SystemInfo;
   cpu: RawCpuState;
   gpuIntegrated: RawGpuState;
   gpuDiscrete: RawGpuState;
@@ -56,6 +58,13 @@ function emptyMeta(): ProviderMeta {
 
 export function emptySnapshot(): HardwareSnapshot {
   return {
+    system: {
+      vendor: null,
+      productName: null,
+      modelConfirmed: false,
+      linuwuSensePresent: false,
+      controlsAllowed: false,
+    },
     cpu: {
       meta: emptyMeta(),
       model: "—",
@@ -149,7 +158,10 @@ function mergeHistory(prev: HardwareSnapshot, raw: RawHardwareSnapshot): Hardwar
       ...raw.gpuIntegrated,
       history: pushSample(prev.gpuIntegrated.history, raw.gpuIntegrated.usagePct),
     },
-    gpuDiscrete: { ...raw.gpuDiscrete, history: [] },
+    gpuDiscrete: {
+      ...raw.gpuDiscrete,
+      history: pushSample(prev.gpuDiscrete.history, raw.gpuDiscrete.usagePct),
+    },
     memory: { ...raw.memory, history: pushSample(prev.memory.history, memPct) },
   };
 }

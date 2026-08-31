@@ -15,16 +15,25 @@ import { Card, CardHeader } from "../components/Card";
 import { StatusPill } from "../components/StatusPill";
 import { celsius, pct, watts } from "../lib/format";
 
+function primaryGpuName(snap: HardwareSnapshot): string | null {
+  if (snap.gpuDiscrete.meta.status !== "unavailable") return snap.gpuDiscrete.name;
+  if (snap.gpuIntegrated.meta.status !== "unavailable") return snap.gpuIntegrated.name;
+  return null;
+}
+
 export function Overview({ snap }: { snap: HardwareSnapshot }) {
   const memPct = (snap.memory.usedMb / snap.memory.totalMb) * 100;
+  const machineName = [snap.system.vendor, snap.system.productName].filter(Boolean).join(" ") || "Notebook Linux";
+  const ramGb = snap.memory.totalMb > 0 ? `${Math.round(snap.memory.totalMb / 1000)} GB RAM` : null;
+  const specLine = [snap.cpu.model, ramGb, primaryGpuName(snap)].filter(Boolean).join(" · ");
 
   return (
     <div className="space-y-5">
       <Card>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <div className="text-xs text-[var(--text-2)] mb-1">Acer Nitro ANV15-52</div>
-            <div className="text-lg font-semibold">Intel Core i5-13420H · 16 GB RAM · RTX 5050 Laptop</div>
+            <div className="text-xs text-[var(--text-2)] mb-1">{machineName}</div>
+            <div className="text-lg font-semibold">{specLine || "Identificando hardware..."}</div>
           </div>
           <div className="flex gap-2">
             <StatusPill status="read-only" />
@@ -151,6 +160,8 @@ const GROUP_ICON: Record<string, typeof Cpu> = {
   "Chassi (EC)": Gauge,
   "Wi-Fi": Wifi,
   GPU: MonitorCog,
+  "GPU integrada": MonitorCog,
+  "GPU dedicada": MonitorCog,
 };
 
 function groupSensors(sensors: TempSensor[]): { name: string; sensors: TempSensor[] }[] {
@@ -219,12 +230,10 @@ function TempGroupCard({ name, sensors }: { name: string; sensors: TempSensor[] 
         <div className="space-y-2">
           {sensors.map((s) => (
             <div key={s.label}>
-              {sensors.length > 1 && (
-                <div className="flex justify-between text-[10px] text-[var(--text-2)] mb-0.5">
-                  <span className="truncate pr-2">{probeLabel(s.label)}</span>
-                  <span className="tabular shrink-0">{s.tempC.toFixed(0)}°C</span>
-                </div>
-              )}
+              <div className="flex justify-between text-[10px] text-[var(--text-2)] mb-0.5">
+                <span className="truncate pr-2">{probeLabel(s.label)}</span>
+                <span className="tabular shrink-0">{s.tempC.toFixed(0)}°C</span>
+              </div>
               <HeatBar tempC={s.tempC} />
             </div>
           ))}

@@ -119,19 +119,36 @@ pub fn read_discrete() -> GpuReading {
                 None => "Nenhum driver de kernel vinculado a esta GPU.".to_string(),
                 _ => String::new(),
             };
+
+            let nvml = if g.driver.as_deref() == Some("nvidia") {
+                crate::nvml::read()
+            } else {
+                None
+            };
+            let has_nvml = nvml.is_some();
+            let (usage_pct, vram_used_mb, vram_total_mb, temp_c, power_w) = match nvml {
+                Some(n) => (n.gpu_util_pct, n.vram_used_mb, n.vram_total_mb, n.temp_c, n.power_w),
+                None => (None, None, None, None, None),
+            };
+            let source = if has_nvml {
+                "lspci -nnk, NVML".to_string()
+            } else {
+                "lspci -nnk".to_string()
+            };
+
             GpuReading {
                 meta: if detail.is_empty() {
-                    ProviderMeta::new(status, "lspci -nnk")
+                    ProviderMeta::new(status, source)
                 } else {
-                    ProviderMeta::new(status, "lspci -nnk").with_detail(detail)
+                    ProviderMeta::new(status, source).with_detail(detail)
                 },
                 name: g.desc.clone(),
                 kind: GpuKind::Discrete,
-                usage_pct: None,
-                vram_used_mb: None,
-                vram_total_mb: None,
-                temp_c: None,
-                power_w: None,
+                usage_pct,
+                vram_used_mb,
+                vram_total_mb,
+                temp_c,
+                power_w,
             }
         }
         None => GpuReading {

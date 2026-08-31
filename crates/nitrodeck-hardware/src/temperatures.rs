@@ -58,6 +58,27 @@ pub fn read() -> TemperaturesReading {
         }
     }
 
+    // GPU integrada: este chip (Raptor Lake-P) não expõe um sensor térmico
+    // próprio para a iGPU — ela fica no mesmo die da CPU, então usamos a
+    // temperatura de pacote da CPU como aproximação honesta, deixando claro
+    // que não é uma sonda dedicada.
+    if let Some(package) = sensors.iter().find(|s| s.label.ends_with("Package id 0")) {
+        sensors.push(TempSensor {
+            label: "GPU integrada — estimativa (die da CPU)".to_string(),
+            temp_c: package.temp_c,
+        });
+    }
+
+    // GPU dedicada NVIDIA: sem sensor hwmon neste driver, lida via NVML.
+    if let Some(n) = crate::nvml::read() {
+        if let Some(temp_c) = n.temp_c {
+            sensors.push(TempSensor {
+                label: "GPU dedicada — NVML".to_string(),
+                temp_c,
+            });
+        }
+    }
+
     let status = if sensors.is_empty() {
         ProviderStatus::Unavailable
     } else {
@@ -65,7 +86,7 @@ pub fn read() -> TemperaturesReading {
     };
 
     TemperaturesReading {
-        meta: ProviderMeta::new(status, "hwmon temp*_input (todos os chips)"),
+        meta: ProviderMeta::new(status, "hwmon temp*_input (todos os chips), NVML"),
         sensors,
     }
 }

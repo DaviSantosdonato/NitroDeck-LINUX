@@ -253,6 +253,16 @@ pub struct ProcessesReading {
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct SystemInfo {
+    pub vendor: Option<String>,
+    pub product_name: Option<String>,
+    pub model_confirmed: bool,
+    pub linuwu_sense_present: bool,
+    pub controls_allowed: bool,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TempSensor {
     pub label: String,
     pub temp_c: f64,
@@ -268,6 +278,7 @@ pub struct TemperaturesReading {
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HardwareSnapshot {
+    pub system: SystemInfo,
     pub cpu: CpuReading,
     pub gpu_integrated: GpuReading,
     pub gpu_discrete: GpuReading,

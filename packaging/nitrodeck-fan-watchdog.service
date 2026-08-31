@@ -1,0 +1,11 @@
+[Unit]
+Description=NitroDeck - mantem as ventoinhas num piso seguro quando o app nao esta aberto
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/nitrodeck/nitrodeck-fan-watchdog.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

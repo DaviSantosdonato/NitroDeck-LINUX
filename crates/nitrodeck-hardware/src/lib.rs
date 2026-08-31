@@ -17,15 +17,16 @@ mod gpu;
 mod hwmon;
 mod keyboard;
 pub mod launcher;
+mod nvml;
 mod memory;
-mod model;
+pub mod model;
 pub mod power;
 pub mod processes;
 mod sg;
 mod storage;
 pub mod temperatures;
 
-use nitrodeck_core::HardwareSnapshot;
+use nitrodeck_core::{HardwareSnapshot, SystemInfo};
 
 #[derive(Default)]
 pub struct HardwareState {
@@ -34,6 +35,13 @@ pub struct HardwareState {
 
 pub fn read_snapshot(state: &mut HardwareState) -> HardwareSnapshot {
     HardwareSnapshot {
+        system: SystemInfo {
+            vendor: model::vendor(),
+            product_name: model::product_name(),
+            model_confirmed: model::is_confirmed(),
+            linuwu_sense_present: model::linuwu_sense_present(),
+            controls_allowed: model::controls_allowed(),
+        },
         cpu: cpu::read(&mut state.cpu),
         gpu_integrated: gpu::read_integrated(),
         gpu_discrete: gpu::read_discrete(),

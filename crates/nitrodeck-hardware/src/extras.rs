@@ -93,7 +93,7 @@ pub fn read() -> ExtrasReading {
 }
 
 fn require_model() -> Result<(), String> {
-    if !model::is_confirmed() {
+    if !model::controls_allowed() {
         return Err(format!(
             "Modelo de notebook não confirmado ({} necessário).",
             model::CONFIRMED_MODEL

@@ -167,7 +167,16 @@ export interface TemperaturesState {
   sensors: TempSensor[];
 }
 
+export interface SystemInfo {
+  vendor: string | null;
+  productName: string | null;
+  modelConfirmed: boolean;
+  linuwuSensePresent: boolean;
+  controlsAllowed: boolean;
+}
+
 export interface HardwareSnapshot {
+  system: SystemInfo;
   cpu: CpuState;
   gpuIntegrated: GpuState;
   gpuDiscrete: GpuState;

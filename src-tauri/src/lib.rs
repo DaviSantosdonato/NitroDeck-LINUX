@@ -68,6 +68,16 @@ fn set_cpu_power_limits(pl1_w: Option<f64>, pl2_w: Option<f64>) -> Result<(), St
     nitrodeck_hardware::cpu::set_power_limits(pl1_w, pl2_w)
 }
 
+#[tauri::command]
+fn accept_hardware_risk() -> Result<(), String> {
+    nitrodeck_hardware::model::accept_risk()
+}
+
+#[tauri::command]
+fn revoke_hardware_risk() -> Result<(), String> {
+    nitrodeck_hardware::model::revoke_risk()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -85,7 +95,9 @@ pub fn run() {
             kill_process,
             launch_with_limits,
             set_cpu_turbo,
-            set_cpu_power_limits
+            set_cpu_power_limits,
+            accept_hardware_risk,
+            revoke_hardware_risk
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

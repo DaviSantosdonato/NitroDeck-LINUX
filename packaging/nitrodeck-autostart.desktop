@@ -1,0 +1,11 @@
+[Desktop Entry]
+Categories=
+Comment=NitroDeck Linux - gerenciador de hardware para notebooks Linux
+Exec=nitrodeck-linux
+StartupWMClass=nitrodeck-linux
+Icon=nitrodeck-linux
+Name=NitroDeck Linux
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-after=panel

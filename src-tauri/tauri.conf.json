@@ -32,6 +32,19 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "depends": ["polkitd | policykit-1"],
+        "files": {
+          "/usr/lib/nitrodeck/nitrodeck-fan-watchdog.sh": "../packaging/nitrodeck-fan-watchdog.sh",
+          "/usr/lib/systemd/user/nitrodeck-fan-watchdog.service": "../packaging/nitrodeck-fan-watchdog.service",
+          "/etc/xdg/autostart/nitrodeck-linux.desktop": "../packaging/nitrodeck-autostart.desktop",
+          "/usr/bin/nitrodeck": "../packaging/nitrodeck-cli"
+        },
+        "postInstallScript": "../packaging/postinst.sh",
+        "postRemoveScript": "../packaging/postrm.sh"
+      }
+    }
   }
 }

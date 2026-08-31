@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import type { PageId } from "../App";
+import type { HardwareSnapshot } from "../types/hardware";
 
 const NAV: { id: PageId; label: string; Icon: typeof Cpu }[] = [
   { id: "overview", label: "Visão Geral", Icon: LayoutDashboard },
@@ -27,7 +28,16 @@ const NAV: { id: PageId; label: string; Icon: typeof Cpu }[] = [
   { id: "processes", label: "Processos", Icon: ListTree },
 ];
 
-export function Sidebar({ page, onNavigate }: { page: PageId; onNavigate: (p: PageId) => void }) {
+export function Sidebar({
+  page,
+  onNavigate,
+  snap,
+}: {
+  page: PageId;
+  onNavigate: (p: PageId) => void;
+  snap: HardwareSnapshot;
+}) {
+  const subtitle = snap.system.productName ?? (snap.system.vendor ? snap.system.vendor : "detectando...");
   return (
     <aside className="w-56 shrink-0 h-full flex flex-col border-r border-[var(--border-1)] bg-[var(--bg-1)]">
       <div className="flex items-center gap-2.5 px-5 py-5">
@@ -39,7 +49,7 @@ export function Sidebar({ page, onNavigate }: { page: PageId; onNavigate: (p: Pa
         </div>
         <div>
           <div className="text-sm font-semibold leading-tight">NitroDeck</div>
-          <div className="text-[10px] text-[var(--text-2)] leading-tight">Nitro ANV15-52</div>
+          <div className="text-[10px] text-[var(--text-2)] leading-tight">{subtitle}</div>
         </div>
       </div>
 

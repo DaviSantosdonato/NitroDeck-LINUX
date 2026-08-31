@@ -1,0 +1,24 @@
+#!/bin/bash
+# Executado pelo dpkg depois de desempacotar o .deb. Ativa as partes que
+# "colam" o NitroDeck no sistema: comando de terminal, abrir sozinho no
+# login, e o watchdog de segurança das ventoinhas (que só age em hardware
+# confirmado — em qualquer outro PC ele fica parado sem fazer nada).
+set -e
+
+chmod +x /usr/lib/nitrodeck/nitrodeck-fan-watchdog.sh 2>/dev/null || true
+chmod +x /usr/bin/nitrodeck 2>/dev/null || true
+
+if command -v systemctl > /dev/null 2>&1; then
+  systemctl --global enable nitrodeck-fan-watchdog.service > /dev/null 2>&1 || true
+
+  # Melhor esforço: se já tem um usuário com sessão gráfica ativa agora
+  # (instalação manual, não um provisionamento automatizado), inicia o
+  # serviço pra essa sessão na hora, sem esperar o próximo login.
+  for uid in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $2}' | sort -u); do
+    user=$(id -nu "$uid" 2>/dev/null) || continue
+    [ -n "$user" ] || continue
+    runuser -l "$user" -c 'systemctl --user start nitrodeck-fan-watchdog.service' > /dev/null 2>&1 || true
+  done
+fi
+
+exit 0

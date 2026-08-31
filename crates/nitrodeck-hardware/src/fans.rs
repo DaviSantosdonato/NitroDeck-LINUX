@@ -68,7 +68,7 @@ pub fn read() -> FanReading {
 
     let monitoring_available = !fans.is_empty();
     let (control_present, mode, cpu_percent, gpu_percent) = read_control_state();
-    let control_available = control_present && model::is_confirmed();
+    let control_available = control_present && model::controls_allowed();
 
     let status = if monitoring_available {
         ProviderStatus::ReadOnly
@@ -108,7 +108,7 @@ pub fn read() -> FanReading {
 /// `cpu == 0 && gpu == 0`. Nunca escreve nada se o modelo não bater com o
 /// único confirmado, ou se um valor estiver fora da faixa segura.
 pub fn set_speed(cpu: u8, gpu: u8) -> Result<(), String> {
-    if !model::is_confirmed() {
+    if !model::controls_allowed() {
         return Err("Modelo de notebook não confirmado para controle de ventoinha.".to_string());
     }
 

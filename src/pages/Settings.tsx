@@ -1,9 +1,13 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ACCENTS, useAccent, type AccentKey } from "../lib/AccentContext";
 import { Card, CardHeader } from "../components/Card";
-import { Check } from "lucide-react";
+import { AlertTriangle, Check, ShieldAlert, ShieldCheck } from "lucide-react";
+import type { HardwareSnapshot } from "../types/hardware";
 
-export function SettingsPage() {
+export function SettingsPage({ snap }: { snap: HardwareSnapshot }) {
   const { accent, setAccent } = useAccent();
+  const detected = snap.system.productName ?? "não identificado";
 
   return (
     <div className="space-y-5">
@@ -38,15 +42,25 @@ export function SettingsPage() {
           O NitroDeck lê sensores reais do sistema (<code className="text-[var(--text-1)]">/proc</code>,{" "}
           <code className="text-[var(--text-1)]">/sys</code>, e comandos somente-leitura como{" "}
           <code className="text-[var(--text-1)]">lspci</code>/<code className="text-[var(--text-1)]">df</code>/
-          <code className="text-[var(--text-1)]">powerprofilesctl</code>), sem privilégio de root. Ventoinhas,
-          limite de carga da bateria, calibração, carregamento via USB e os extras do driver{" "}
-          <code className="text-[var(--text-1)]">linuwu_sense</code> têm controle real, mas só neste modelo exato
-          confirmado ({" "}
-          <code className="text-[var(--text-1)]">Nitro ANV15-52</code>) — em qualquer outro hardware o app volta a
-          ser somente leitura por segurança. Os 3 ajustes que exigem root pedem sua senha a cada alteração; nenhum
-          outro processo do app roda como root.
+          <code className="text-[var(--text-1)]">powerprofilesctl</code>), sem privilégio de root, em qualquer PC
+          Linux. Ventoinhas, limite de carga da bateria, calibração, carregamento via USB e os extras do driver{" "}
+          <code className="text-[var(--text-1)]">linuwu_sense</code> têm controle real, mas por padrão só no modelo
+          exato confirmado (<code className="text-[var(--text-1)]">{"Nitro ANV15-52"}</code>) — nesse caso o app
+          nunca fabrica um valor: se algo não bate, a seção some ou vira somente leitura. Os ajustes que exigem root
+          pedem sua senha a cada alteração; nenhum outro processo do app roda como root.
+        </p>
+        <p className="text-xs mt-3 pt-3 border-t border-[var(--border-1)]" style={{ color: "var(--text-2)" }}>
+          Modelo detectado neste PC: <strong className="text-[var(--text-0)]">{detected}</strong> —{" "}
+          {snap.system.modelConfirmed ? (
+            <span style={{ color: "var(--good)" }}>bate com o confirmado, controles liberados</span>
+          ) : (
+            <span style={{ color: "var(--warn)" }}>não é o modelo validado por nós</span>
+          )}
+          .
         </p>
       </Card>
+
+      {!snap.system.modelConfirmed && <UnvalidatedModelCard snap={snap} />}
 
       <Card>
         <CardHeader title="Segurança das ventoinhas" />
@@ -58,5 +72,85 @@ export function SettingsPage() {
         </p>
       </Card>
     </div>
+  );
+}
+
+function UnvalidatedModelCard({ snap }: { snap: HardwareSnapshot }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const allowed = snap.system.controlsAllowed;
+
+  async function toggle() {
+    setBusy(true);
+    setError(null);
+    try {
+      await invoke(allowed ? "revoke_hardware_risk" : "accept_hardware_risk");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!snap.system.linuwuSensePresent) {
+    return (
+      <Card>
+        <CardHeader title="Controles de hardware" />
+        <p className="text-xs text-[var(--text-2)] leading-relaxed">
+          O driver <code className="text-[var(--text-1)]">linuwu_sense</code> não foi detectado neste PC — sem ele
+          não existe nada pra liberar. Esta seção fica só leitura, o que é esperado fora de um Acer Nitro/Predator
+          com o driver instalado.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Ativar controles num modelo não validado"
+        right={
+          allowed ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+              <ShieldCheck size={12} /> ativado por você
+            </span>
+          ) : undefined
+        }
+      />
+      <div className="flex items-start gap-3 rounded-xl p-4" style={{ background: "rgba(245,158,11,0.1)" }}>
+        <ShieldAlert size={18} className="shrink-0 mt-0.5" style={{ color: "var(--warn)" }} />
+        <div className="text-xs leading-relaxed" style={{ color: "var(--text-1)" }}>
+          <p className="mb-2">
+            Detectamos o driver <code className="text-[var(--text-0)]">linuwu_sense</code> ativo, mas este PC (
+            <strong>{snap.system.productName ?? "modelo desconhecido"}</strong>) não é o modelo que validamos (
+            <strong>Nitro ANV15-52</strong>). As mesmas rotinas de ventoinha, bateria e extras costumam funcionar
+            em outros notebooks Acer Nitro/Predator que usam esse driver, mas <strong>nunca testamos no seu
+            modelo exato</strong> — os registradores WMI variam por modelo, então um comportamento inesperado
+            (leitura errada, ventoinha não responder, etc.) é possível. Isso é uma decisão sua, não nossa.
+          </p>
+          <button
+            onClick={toggle}
+            disabled={busy}
+            className="text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50"
+            style={
+              allowed
+                ? { background: "var(--bg-3)", color: "var(--text-1)" }
+                : { background: "var(--warn)", color: "#1a1400" }
+            }
+          >
+            {busy ? "Aplicando..." : allowed ? "Desativar controles não validados" : "Entendo o risco, ativar mesmo assim"}
+          </button>
+        </div>
+      </div>
+      {error && (
+        <div
+          className="mt-3 flex items-center gap-2 text-xs rounded-lg px-3 py-2"
+          style={{ background: "rgba(248,113,113,0.12)", color: "var(--bad)" }}
+        >
+          <AlertTriangle size={13} />
+          {error}
+        </div>
+      )}
+    </Card>
   );
 }

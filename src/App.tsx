@@ -34,7 +34,7 @@ function AppShell() {
 
   return (
     <div className="flex h-screen w-screen">
-      <Sidebar page={page} onNavigate={setPage} />
+      <Sidebar page={page} onNavigate={setPage} snap={snap} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar page={page} />
         <main className="flex-1 overflow-y-auto p-6">
@@ -48,7 +48,7 @@ function AppShell() {
           {page === "power" && <PowerPage snap={snap} />}
           {page === "extras" && <ExtrasPage snap={snap} />}
           {page === "processes" && <ProcessesPage snap={snap} />}
-          {page === "settings" && <SettingsPage />}
+          {page === "settings" && <SettingsPage snap={snap} />}
         </main>
       </div>
     </div>
