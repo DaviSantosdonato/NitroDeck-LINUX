@@ -16,7 +16,7 @@ Feito originalmente para o Acer Nitro ANV15-52 (via o driver de comunidade [Linu
 | **Memória** | Uso de RAM e swap ao vivo | — |
 | **Bateria** | Percentual, ciclos, saúde, limite de carga (80%), calibração, carregamento via USB | ✅ no hardware suportado |
 | **Armazenamento** | Discos, uso, temperatura | — |
-| **Ventoinhas** | RPM real, controle manual com piso de segurança, volta automática se o app cair | ✅ no hardware suportado |
+| **Ventoinhas** | RPM real; controle manual com piso de segurança, volta automática se o app cair — via WMI da Acer (`linuwu_sense`) ou via `hwmon` pwm padrão do kernel (nct6775/it87/`dell-smm-hwmon`, sem depender de fabricante) | ✅ no hardware suportado |
 | **Energia** | Perfil ativo (Economia/Equilibrado/Desempenho), troca real via `power-profiles-daemon` | ✅ |
 | **Processos** | Lista por CPU/memória, encerrar processo, abrir programa com teto de memória/CPU (cgroups) e GPU dedicada (PRIME offload) | ✅ |
 | **Extras** | Recursos do driver Acer (luz do teclado, som de boot, LCD override) | ✅ no hardware suportado |
@@ -61,7 +61,9 @@ Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia ofi
 
 - **Qualquer distro Linux com um ambiente gráfico** (testado em Parrot OS/Debian, deve funcionar em qualquer sistema baseado em systemd + GTK/Wayland ou X11).
 - **Monitoramento**: funciona em qualquer PC — CPU, memória, disco, temperaturas e processos são lidos via `/proc`/`/sys`, sem dependência de fabricante.
-- **Controle de ventoinha/bateria/extras**: usa um fork do driver [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) (créditos em `driver/linuwu-sense/ATTRIBUTION.md`), trazido pra dentro deste repositório e compilado via DKMS. No Nitro ANV15-52 ele instala e carrega sozinho junto do app; em outro Acer Nitro/Predator com WMI compatível, aparece como ação explícita em Configurações, com aviso de que não foi validado naquele modelo exato. Outros fabricantes (Dell, Lenovo, Asus, HP) usam mecanismos completamente diferentes e não têm controle implementado ainda.
+- **Ventoinha via `hwmon` padrão** (`pwm`/`pwm_enable`): funciona em qualquer chip que exponha essa interface documentada do kernel — comum em placas-mãe (nct6775, it87) e em alguns notebooks Dell (`dell-smm-hwmon`). Não exige confirmação de modelo, porque não é código específico de fabricante nem engenharia reversa — é o mesmo mecanismo que ferramentas como `fancontrol`/`lm-sensors` usam.
+- **Controle de ventoinha/bateria/extras da Acer**: usa um fork do driver [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) (créditos em `driver/linuwu-sense/ATTRIBUTION.md`), trazido pra dentro deste repositório e compilado via DKMS. No Nitro ANV15-52 ele instala e carrega sozinho junto do app; em outro Acer Nitro/Predator com WMI compatível, aparece como ação explícita em Configurações, com aviso de que não foi validado naquele modelo exato.
+- **Lenovo, Asus, HP e outros**: ainda sem controle implementado (fora ventoinha via hwmon, quando o chip suportar). Cada fabricante usa um mecanismo próprio (`thinkpad_acpi`, `asus-wmi`, `hp-wmi`) que exigiria validação individual antes de oferecer escrita.
 - **GPU dedicada NVIDIA**: telemetria completa (uso/VRAM/temperatura/potência) requer o driver proprietário da NVIDIA instalado à parte.
 
 ## Arquitetura
