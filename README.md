@@ -47,7 +47,7 @@ npm run tauri build -- --bundles deb
 sudo apt install ./src-tauri/target/release/bundle/deb/*.deb
 ```
 
-Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia oficial](https://v2.tauri.app/start/prerequisites/)).
+Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia oficial](https://v2.tauri.app/start/prerequisites/)). Pra compilar o driver de hardware junto (opcional, só relevante em Acer Nitro/Predator), também precisa de `dkms` e os headers do seu kernel instalados.
 
 ## Por que confiar nele
 
@@ -61,7 +61,7 @@ Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia ofi
 
 - **Qualquer distro Linux com um ambiente gráfico** (testado em Parrot OS/Debian, deve funcionar em qualquer sistema baseado em systemd + GTK/Wayland ou X11).
 - **Monitoramento**: funciona em qualquer PC — CPU, memória, disco, temperaturas e processos são lidos via `/proc`/`/sys`, sem dependência de fabricante.
-- **Controle de ventoinha/bateria/extras**: exige o driver [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) instalado à parte (não é automatizado por este projeto) e é específico de notebooks Acer Nitro/Predator com WMI compatível. Outros fabricantes (Dell, Lenovo, Asus, HP) usam mecanismos completamente diferentes e não têm controle implementado ainda.
+- **Controle de ventoinha/bateria/extras**: usa um fork do driver [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) (créditos em `driver/linuwu-sense/ATTRIBUTION.md`), trazido pra dentro deste repositório e compilado via DKMS. No Nitro ANV15-52 ele instala e carrega sozinho junto do app; em outro Acer Nitro/Predator com WMI compatível, aparece como ação explícita em Configurações, com aviso de que não foi validado naquele modelo exato. Outros fabricantes (Dell, Lenovo, Asus, HP) usam mecanismos completamente diferentes e não têm controle implementado ainda.
 - **GPU dedicada NVIDIA**: telemetria completa (uso/VRAM/temperatura/potência) requer o driver proprietário da NVIDIA instalado à parte.
 
 ## Arquitetura
