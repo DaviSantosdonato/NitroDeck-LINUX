@@ -14,6 +14,11 @@ fn set_fan_speed(cpu: u8, gpu: u8) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_generic_fan_pwm(id: String, percent: u8) -> Result<(), String> {
+    nitrodeck_hardware::generic_fan::set_percent(&id, percent)
+}
+
+#[tauri::command]
 fn set_battery_charge_limit(enabled: bool) -> Result<(), String> {
     nitrodeck_hardware::battery::set_charge_limit(enabled)
 }
@@ -103,7 +108,8 @@ pub fn run() {
             set_cpu_power_limits,
             accept_hardware_risk,
             revoke_hardware_risk,
-            install_hardware_driver
+            install_hardware_driver,
+            set_generic_fan_pwm
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -115,6 +121,7 @@ pub fn run() {
             // cobre esse caso, aplicando o piso de segurança em até 5s.
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 nitrodeck_hardware::fans::revert_to_auto_best_effort();
+                nitrodeck_hardware::generic_fan::revert_all_to_auto_best_effort();
             }
         });
 }

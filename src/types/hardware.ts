@@ -94,6 +94,13 @@ export interface StorageState {
   devices: StorageDevice[];
 }
 
+export interface GenericPwmChannel {
+  id: string;
+  label: string;
+  percent: number | null;
+  isManual: boolean;
+}
+
 export interface FanState {
   meta: ProviderMeta;
   monitoringAvailable: boolean;
@@ -103,6 +110,7 @@ export interface FanState {
   cpuPercent: number | null;
   gpuPercent: number | null;
   minManualPercent: number;
+  genericPwm: GenericPwmChannel[];
 }
 
 export interface PowerProfile {

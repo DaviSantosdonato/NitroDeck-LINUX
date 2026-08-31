@@ -1,5 +1,5 @@
-use crate::{hwmon, model, sg};
-use nitrodeck_core::{FanEntry, FanMode, FanReading, ProviderMeta, ProviderStatus};
+use crate::{generic_fan, hwmon, model, sg};
+use nitrodeck_core::{FanEntry, FanMode, FanReading, GenericPwmChannel, ProviderMeta, ProviderStatus};
 use std::fs;
 
 const NITRO_SENSE_FAN_SPEED: &str =
@@ -70,25 +70,35 @@ pub fn read() -> FanReading {
     let (control_present, mode, cpu_percent, gpu_percent) = read_control_state();
     let control_available = control_present && model::controls_allowed();
 
+    let generic_pwm: Vec<GenericPwmChannel> = generic_fan::discover()
+        .into_iter()
+        .map(|ch| GenericPwmChannel {
+            id: ch.id,
+            label: ch.label,
+            percent: ch.percent,
+            is_manual: ch.is_manual,
+        })
+        .collect();
+
     let status = if monitoring_available {
         ProviderStatus::ReadOnly
     } else {
         ProviderStatus::Unavailable
     };
 
-    let mut meta = ProviderMeta::new(status, "hwmon fan*_input, linuwu_sense nitro_sense");
+    let mut meta = ProviderMeta::new(status, "hwmon fan*_input, linuwu_sense nitro_sense, hwmon pwm*");
     if !monitoring_available {
         meta = meta.with_detail(
             "Nenhum sensor fan*_input foi encontrado em nenhum chip hwmon deste notebook.",
         );
-    } else if !control_available {
+    } else if !control_available && generic_pwm.is_empty() {
         meta = meta.with_detail(if control_present {
             format!(
                 "Interface de controle encontrada, mas o modelo deste notebook não bate com o confirmado ({}) — controle desabilitado por segurança.",
                 model::CONFIRMED_MODEL
             )
         } else {
-            "Leitura de RPM disponível; controle manual requer o módulo linuwu_sense (não instalado ou não detectado).".to_string()
+            "Leitura de RPM disponível; controle manual requer o módulo linuwu_sense (não instalado ou não detectado) ou um chip hwmon com PWM.".to_string()
         });
     }
 
@@ -101,6 +111,7 @@ pub fn read() -> FanReading {
         cpu_percent,
         gpu_percent,
         min_manual_percent: MIN_MANUAL_PERCENT,
+        generic_pwm,
     }
 }
 

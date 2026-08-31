@@ -13,6 +13,7 @@ pub mod battery;
 pub mod cpu;
 pub mod extras;
 pub mod fans;
+pub mod generic_fan;
 mod gpu;
 mod hwmon;
 mod keyboard;

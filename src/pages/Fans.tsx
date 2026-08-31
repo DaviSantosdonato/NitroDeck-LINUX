@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AlertTriangle, Fan as FanIcon } from "lucide-react";
-import type { HardwareSnapshot } from "../types/hardware";
+import type { GenericPwmChannel, HardwareSnapshot } from "../types/hardware";
 import { Card, CardHeader } from "../components/Card";
 import { StatusPill } from "../components/StatusPill";
 import { UnavailablePanel } from "../components/UnavailablePanel";
@@ -140,6 +140,82 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
             </div>
           )}
         </Card>
+      )}
+
+      {fans.genericPwm.length > 0 && (
+        <Card>
+          <CardHeader
+            title="Ventoinhas via hwmon (PWM padrão do kernel)"
+            subtitle="Não é específico de fabricante — funciona em qualquer chip que exponha pwm/pwm_enable"
+          />
+          <div className="space-y-4">
+            {fans.genericPwm.map((ch) => (
+              <GenericPwmRow key={ch.id} channel={ch} />
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function GenericPwmRow({ channel }: { channel: GenericPwmChannel }) {
+  const [value, setValue] = useState(channel.percent ?? 25);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply(percent: number) {
+    setBusy(true);
+    setError(null);
+    try {
+      await invoke("set_generic_fan_pwm", { id: channel.id, percent });
+      setValue(percent === 0 ? channel.percent ?? 25 : percent);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl bg-[var(--bg-2)] p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-[var(--text-1)]">{channel.label}</span>
+        <span className="text-[10px] text-[var(--text-2)]">
+          {channel.isManual ? "manual" : "automático"} · {channel.percent ?? "—"}%
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={25}
+          max={100}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          className="w-full accent-[var(--accent)]"
+        />
+        <button
+          onClick={() => apply(value)}
+          disabled={busy}
+          className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+          style={{ background: "var(--accent)", color: "#fff" }}
+        >
+          Aplicar
+        </button>
+        <button
+          onClick={() => apply(0)}
+          disabled={busy}
+          className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+          style={{ background: "var(--bg-3)", color: "var(--text-1)" }}
+        >
+          Auto
+        </button>
+      </div>
+      {error && (
+        <div className="mt-2 flex items-center gap-2 text-xs rounded-lg px-3 py-2" style={{ background: "rgba(248,113,113,0.12)", color: "var(--bad)" }}>
+          <AlertTriangle size={13} />
+          {error}
+        </div>
       )}
     </div>
   );

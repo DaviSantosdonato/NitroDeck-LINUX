@@ -162,6 +162,17 @@ pub enum FanMode {
     Manual,
 }
 
+/// Um canal de ventoinha controlado via a interface hwmon `pwmN` padrão do
+/// kernel (não específico de fabricante — ver `generic_fan.rs`).
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GenericPwmChannel {
+    pub id: String,
+    pub label: String,
+    pub percent: Option<u8>,
+    pub is_manual: bool,
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FanReading {
@@ -173,6 +184,7 @@ pub struct FanReading {
     pub cpu_percent: Option<u8>,
     pub gpu_percent: Option<u8>,
     pub min_manual_percent: u8,
+    pub generic_pwm: Vec<GenericPwmChannel>,
 }
 
 #[derive(Serialize, Clone, Debug)]

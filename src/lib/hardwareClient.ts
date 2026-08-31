@@ -129,6 +129,7 @@ export function emptySnapshot(): HardwareSnapshot {
       cpuPercent: null,
       gpuPercent: null,
       minManualPercent: 30,
+      genericPwm: [],
     },
     power: { meta: emptyMeta(), profiles: [] },
     keyboardLighting: { meta: emptyMeta() },
