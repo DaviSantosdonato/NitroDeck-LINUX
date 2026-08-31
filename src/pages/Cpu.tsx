@@ -52,7 +52,7 @@ export function CpuPage({ snap }: { snap: HardwareSnapshot }) {
         <Card>
           <CardHeader
             title="Desempenho avançado (overclock)"
-            subtitle="Este notebook não permite ajuste de multiplicador/voltagem (chip móvel travado pela Intel) — isto ajusta o teto de potência real que a EC permite ao CPU sustentar"
+            subtitle="Ajuste de multiplicador/voltagem exige acesso à UEFI/BIOS, fora do alcance de um app em Linux — isto ajusta o teto de potência real (RAPL) que o sistema permite ao CPU sustentar, dentro da proteção térmica do próprio chip"
           />
           <OverclockControl cpu={cpu} />
         </Card>
@@ -190,8 +190,11 @@ function OverclockControl({ cpu }: { cpu: CpuState }) {
       {cpu.turboEnabled !== null && (
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-medium">Turbo Boost</div>
-            <p className="text-xs text-[var(--text-2)] mt-0.5">Permite o CPU passar da frequência base em picos de carga</p>
+            <div className="text-sm font-medium">Boost de frequência</div>
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
+              Permite o CPU passar da frequência base em picos de carga (Turbo Boost na Intel, Precision Boost na
+              AMD)
+            </p>
           </div>
           <Toggle checked={!!turbo} onChange={toggleTurbo} disabled={busy} />
         </div>

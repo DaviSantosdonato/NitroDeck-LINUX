@@ -139,6 +139,16 @@ pub struct StorageDevice {
     pub temp_c: Option<f64>,
     pub wear_pct: Option<f64>,
     pub smart_ok: Option<bool>,
+    pub mountpoints: Vec<String>,
+}
+
+/// Resultado de uma checagem SMART sob demanda (não faz parte do snapshot
+/// automático — cada checagem pede senha via pkexec).
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SmartResult {
+    pub healthy: Option<bool>,
+    pub wear_pct: Option<u32>,
 }
 
 #[derive(Serialize, Clone, Debug)]

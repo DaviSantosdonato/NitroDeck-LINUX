@@ -2134,6 +2134,7 @@ name = "nitrodeck-hardware"
 version = "0.1.0"
 dependencies = [
  "nitrodeck-core",
+ "serde_json",
 ]
 
 [[package]]

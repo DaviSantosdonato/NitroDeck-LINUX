@@ -56,7 +56,7 @@ export function Overview({ snap, events }: { snap: HardwareSnapshot; events: Har
           value={pct(snap.gpuIntegrated.usagePct)}
           history={snap.gpuIntegrated.history}
           color="var(--info)"
-          footer="Intel UHD Graphics"
+          footer={snap.gpuIntegrated.name}
         />
         <MetricTile
           icon={<MemoryStick size={14} />}
@@ -92,7 +92,7 @@ export function Overview({ snap, events }: { snap: HardwareSnapshot; events: Har
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{d.model}</div>
                 <div className="text-xs text-[var(--text-2)]">
-                  {d.usedPct}% usado · {celsius(d.tempC)}
+                  {d.usedPct != null ? `${d.usedPct.toFixed(0)}% usado` : "sem partição montada"} · {celsius(d.tempC)}
                 </div>
               </div>
             </div>

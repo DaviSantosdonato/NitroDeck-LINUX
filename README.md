@@ -17,11 +17,11 @@ Feito originalmente para o Acer Nitro ANV15-52, mas a parte de monitoramento —
 | Tela | O que mostra | Controle real? |
 |---|---|---|
 | **Visão Geral** | Destaque do status térmico (temperatura mais alta + sugestão de ventoinha), 4 indicadores rápidos (CPU/GPU/memória/bateria), GPU dedicada, armazenamento, ventoinhas, perfil de energia, todas as temperaturas agrupadas por componente, e um feed de atividade com eventos reais (troca de perfil, driver carregado, alerta de temperatura, modo de ventoinha) | — |
-| **Processador** | Uso, frequência, temperatura por núcleo, potência real (RAPL), modelo detectado | ✅ governor de CPU, Turbo Boost, limites de potência PL1/PL2 |
-| **Gráficos** | GPU integrada e dedicada — identificação sempre; uso/VRAM/temperatura/potência quando o driver expõe (testado com NVIDIA via NVML) | — |
+| **Processador** | Uso, frequência, temperatura por núcleo (Intel `coretemp` ou AMD `k10temp`), potência real (RAPL, Intel ou AMD), modelo detectado | ✅ governor de CPU, boost de frequência (Turbo Boost/Precision Boost), limites de potência PL1/PL2 |
+| **Gráficos** | GPU integrada e dedicada — classificadas pelo barramento PCI (não pelo nome do fabricante, então funciona igual em APU AMD); uso/VRAM/temperatura/potência via NVML (NVIDIA) ou sysfs `amdgpu` (AMD) | — |
 | **Memória** | Uso de RAM e swap ao vivo, tabela de processos ordenada por consumo | ✅ limitar memória de um processo já em execução (cgroups) |
 | **Bateria** | Percentual, ciclos, saúde, tempo restante | ✅ limite de carga (80%), calibração, carregamento via USB no hardware suportado |
-| **Armazenamento** | Discos, uso, temperatura | — |
+| **Armazenamento** | Discos, uso e temperatura **por disco físico** (soma real das partições montadas em cada um, nunca o mesmo número pra todos), suporte a NVMe e SATA/HD (`drivetemp`) | ✅ checar SMART (saúde + desgaste) sob demanda, executar TRIM por partição |
 | **Ventoinhas** | RPM real; controle manual com piso de segurança, volta automática se o app cair | ✅ via WMI da Acer (`linuwu_sense`) **ou** via `hwmon` pwm padrão do kernel (nct6775/it87/`dell-smm-hwmon` — não depende de fabricante) |
 | **Energia** | Perfil ativo (Economia/Equilibrado/Desempenho) | ✅ troca real via `power-profiles-daemon` |
 | **Processos** | Lista por CPU/memória em tempo real | ✅ encerrar processo, limitar memória de um já em execução, abrir programa novo com teto de memória/CPU e GPU dedicada (PRIME offload) |
@@ -42,13 +42,16 @@ Feito originalmente para o Acer Nitro ANV15-52, mas a parte de monitoramento —
 
 | Hardware | Monitoramento | Controle |
 |---|---|---|
-| **Qualquer CPU/PC Linux** (Intel ou AMD, notebook ou desktop) | ✅ CPU, memória, disco, temperaturas, processos | ✅ governor de CPU, perfil de energia, limitar memória de processo — tudo genérico, sem driver de terceiros |
-| **Intel** (Turbo Boost, RAPL) | ✅ | ✅ limites de potência PL1/PL2 (equivalente a "overclock" nesse tipo de chip móvel) |
+| **Qualquer CPU/PC Linux** (Intel ou AMD, notebook ou desktop, com ou sem bateria) | ✅ CPU, memória, disco (por unidade física), temperaturas, processos | ✅ governor de CPU, perfil de energia, limitar memória de processo, SMART/TRIM em qualquer disco — tudo genérico, sem driver de terceiros |
+| **Intel** (Turbo Boost, RAPL) | ✅ | ✅ boost de frequência e limites de potência PL1/PL2 |
+| **AMD** (Precision Boost, RAPL em kernel 6.11+) | ✅ `k10temp` | ✅ boost via `cpufreq/boost`, limites de potência quando o kernel expõe RAPL pra AMD |
 | **NVIDIA** (com driver instalado) | ✅ uso/VRAM/temperatura/potência via NVML | ✅ escolher GPU dedicada por aplicativo (PRIME offload) |
+| **AMD Radeon** (integrada ou dedicada, driver `amdgpu`) | ✅ uso/VRAM/temperatura/potência via sysfs do próprio driver | — |
 | **Qualquer placa com chip hwmon pwm** (nct6775, it87, `dell-smm-hwmon`) | ✅ RPM | ✅ controle manual de ventoinha |
+| **Qualquer disco NVMe ou SATA/SAS** | ✅ temperatura (`nvme`/`drivetemp`), uso real por partição | ✅ SMART (saúde + % de desgaste) e TRIM, ambos sob demanda com sua senha |
 | **Acer Nitro ANV15-52** (modelo de referência) | ✅ tudo | ✅ tudo, automático desde a instalação |
 | **Outro Acer Nitro/Predator** com WMI compatível | ✅ tudo | ✅ ventoinha/bateria/extras, mas exige confirmação explícita na tela (não validamos esse modelo exato) |
-| **Dell, Lenovo, Asus, HP** | ✅ tudo que é genérico | ⚠️ parcial — só ventoinha via hwmon, quando o chip suportar. Cada fabricante usa um mecanismo próprio (`thinkpad_acpi`, `asus-wmi`, `hp-wmi`) ainda não implementado, porque exigiria validação em hardware real que não temos |
+| **Dell, Lenovo, Asus, HP** | ✅ tudo que é genérico (CPU/GPU/disco/memória/processos) | ⚠️ parcial — ventoinha via hwmon quando o chip suportar. Cada fabricante ainda tem seu próprio mecanismo de EC (`thinkpad_acpi`, `asus-wmi`, `hp-wmi`) não implementado, porque exigiria validação em hardware real que não temos |
 
 ## Instalação
 
@@ -94,6 +97,10 @@ Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia ofi
 - **Ventoinha tem rede de segurança dupla.** Fechar o app tenta voltar pro automático; se travar, um serviço systemd independente força um piso seguro sozinho em poucos segundos — mesmo com o app fechado ou crashado.
 - **Escrita de hardware nunca escala privilégio à toa.** Ventoinha/bateria/extras da Acer usam o grupo suplementar do driver via `sg`; limite de memória de processo usa a delegação de cgroups que o próprio systemd já dá à sua sessão — nenhum dos dois precisa de root.
 - **Nada de reverse engineering às cegas.** Todo controle de hardware usa uma interface documentada (kernel `hwmon`, `power-profiles-daemon`, RAPL) ou um driver de comunidade já validado por terceiros (Linuwu-Sense) — nunca código escrito adivinhando comportamento de firmware não documentado.
+
+## Desempenho e tamanho
+
+O binário Rust é compilado com LTO, um único codegen-unit, `strip` de símbolos e `opt-level = "z"` (otimizado pra tamanho) — o `.deb` fica em torno de 2 MB, o app abre quase instantaneamente e o consumo de RAM em repouso é mínimo (é uma janela nativa Tauri/WebKitGTK, não Electron/Chromium). O AppImage é maior (~100 MB) porque empacota o runtime GTK inteiro junto, pra rodar em qualquer distro sem depender do que já está instalado — é assim que o formato AppImage funciona, não um problema deste app específico.
 
 ## Arquitetura
 

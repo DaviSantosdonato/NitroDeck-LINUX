@@ -110,11 +110,17 @@ fn read_freq_mhz() -> Option<f64> {
     Some((total as f64 / count as f64) / 1000.0)
 }
 
+// Intel usa o chip "coretemp" com a sonda "Package id 0"; AMD usa "k10temp"
+// com "Tctl" (throttle control, o valor que a própria AMD recomenda expor
+// como temperatura da CPU) ou "Tdie" como alternativa em chips mais
+// antigos. Tentamos os dois, sem assumir fabricante.
 fn read_package_temp_c() -> Option<f64> {
     for chip in hwmon::chips() {
-        if chip.name != "coretemp" {
-            continue;
-        }
+        let wanted_labels: &[&str] = match chip.name.as_str() {
+            "coretemp" => &["Package id 0"],
+            "k10temp" => &["Tctl", "Tdie"],
+            _ => continue,
+        };
         let Ok(entries) = fs::read_dir(&chip.path) else {
             continue;
         };
@@ -127,7 +133,7 @@ fn read_package_temp_c() -> Option<f64> {
             let Ok(label) = fs::read_to_string(entry.path()) else {
                 continue;
             };
-            if label.trim() == "Package id 0" {
+            if wanted_labels.contains(&label.trim()) {
                 let input_path = chip.path.join(format!("{prefix}_input"));
                 if let Some(v) = hwmon::read_u64(&input_path) {
                     return Some(v as f64 / 1000.0);
@@ -138,10 +144,25 @@ fn read_package_temp_c() -> Option<f64> {
     None
 }
 
+// RAPL (powercap) existe tanto em Intel (`intel-rapl:N`) quanto em kernels
+// recentes com AMD (`amd-rapl` a partir do Linux 6.11) — em vez de fixar o
+// nome do zone, procuramos a primeira zona cujo `name` seja "package-N",
+// que é o domínio de pacote inteiro em qualquer um dos dois.
+fn find_rapl_package_zone() -> Option<std::path::PathBuf> {
+    let entries = fs::read_dir("/sys/class/powercap").ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = fs::read_to_string(path.join("name")).ok()?;
+        if name.trim().starts_with("package-") {
+            return Some(path);
+        }
+    }
+    None
+}
+
 fn read_rapl_energy_uj() -> Option<u64> {
-    hwmon::read_u64(std::path::Path::new(
-        "/sys/class/powercap/intel-rapl:0/energy_uj",
-    ))
+    let zone = find_rapl_package_zone()?;
+    hwmon::read_u64(&zone.join("energy_uj"))
 }
 
 const GOVERNOR_PATH: &str = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
@@ -189,16 +210,23 @@ pub fn set_governor(governor: &str) -> Result<(), String> {
 }
 
 const NO_TURBO_PATH: &str = "/sys/devices/system/cpu/intel_pstate/no_turbo";
-const RAPL_DIR: &str = "/sys/class/powercap/intel-rapl:0";
+// Presente em qualquer CPU com cpufreq, Intel (acpi-cpufreq) ou AMD
+// (acpi-cpufreq/amd-pstate) — usado como alternativa quando não há
+// intel_pstate. Semântica oposta ao no_turbo: 1 = boost ligado.
+const CPUFREQ_BOOST_PATH: &str = "/sys/devices/system/cpu/cpufreq/boost";
 
 fn read_turbo() -> Option<bool> {
-    let raw = fs::read_to_string(NO_TURBO_PATH).ok()?;
-    Some(raw.trim() == "0")
+    if let Ok(raw) = fs::read_to_string(NO_TURBO_PATH) {
+        return Some(raw.trim() == "0");
+    }
+    let raw = fs::read_to_string(CPUFREQ_BOOST_PATH).ok()?;
+    Some(raw.trim() == "1")
 }
 
 fn read_rapl_limit_w(constraint: u8) -> Option<f64> {
-    let path = format!("{RAPL_DIR}/constraint_{constraint}_power_limit_uw");
-    hwmon::read_u64(std::path::Path::new(&path)).map(|uw| uw as f64 / 1_000_000.0)
+    let zone = find_rapl_package_zone()?;
+    hwmon::read_u64(&zone.join(format!("constraint_{constraint}_power_limit_uw")))
+        .map(|uw| uw as f64 / 1_000_000.0)
 }
 
 // Faixa segura por escolha nossa (conservadora), não um limite garantido pelo
@@ -210,14 +238,23 @@ const POWER_LIMIT_MIN_W: f64 = 10.0;
 const POWER_LIMIT_MAX_W: f64 = 65.0; // PL1 (long_term)
 const POWER_LIMIT_PL2_MAX_W: f64 = 140.0; // PL2 (short_term) pode ir mais alto, é só pico curto
 
-/// Ativa/desativa o Turbo Boost (intel_pstate). Exige root — escrita
-/// root:root por padrão no kernel.
+/// Ativa/desativa o Turbo Boost. Usa `intel_pstate/no_turbo` quando
+/// disponível (Intel), ou o `cpufreq/boost` genérico (AMD e Intel sem
+/// intel_pstate) como alternativa — os dois têm polaridade oposta, cada um
+/// escreve o valor certo pro seu próprio arquivo. Exige root (pkexec).
 pub fn set_turbo(enabled: bool) -> Result<(), String> {
-    let value = if enabled { "0" } else { "1" };
+    let (path, value) = if std::path::Path::new(NO_TURBO_PATH).exists() {
+        (NO_TURBO_PATH, if enabled { "0" } else { "1" })
+    } else if std::path::Path::new(CPUFREQ_BOOST_PATH).exists() {
+        (CPUFREQ_BOOST_PATH, if enabled { "1" } else { "0" })
+    } else {
+        return Err("Este CPU não expõe controle de Turbo Boost.".to_string());
+    };
+
     let output = std::process::Command::new("pkexec")
         .arg("bash")
         .arg("-c")
-        .arg(format!("echo '{value}' > '{NO_TURBO_PATH}'"))
+        .arg(format!("echo '{value}' > '{path}'"))
         .output()
         .map_err(|e| format!("Falha ao executar pkexec: {e}"))?;
     if !output.status.success() {
@@ -253,15 +290,18 @@ pub fn set_power_limits(pl1_w: Option<f64>, pl2_w: Option<f64>) -> Result<(), St
     if pl1_w.is_none() && pl2_w.is_none() {
         return Err("Nenhum limite informado.".to_string());
     }
+    let zone = find_rapl_package_zone()
+        .ok_or_else(|| "Este CPU não expõe RAPL/powercap — limite de potência indisponível.".to_string())?;
+    let zone = zone.display();
 
     let mut script = String::new();
     if let Some(w) = pl1_w {
         let uw = (w * 1_000_000.0) as u64;
-        script.push_str(&format!("echo '{uw}' > '{RAPL_DIR}/constraint_0_power_limit_uw'; "));
+        script.push_str(&format!("echo '{uw}' > '{zone}/constraint_0_power_limit_uw'; "));
     }
     if let Some(w) = pl2_w {
         let uw = (w * 1_000_000.0) as u64;
-        script.push_str(&format!("echo '{uw}' > '{RAPL_DIR}/constraint_1_power_limit_uw'; "));
+        script.push_str(&format!("echo '{uw}' > '{zone}/constraint_1_power_limit_uw'; "));
     }
 
     let output = std::process::Command::new("pkexec")

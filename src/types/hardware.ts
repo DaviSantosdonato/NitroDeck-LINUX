@@ -83,10 +83,16 @@ export interface StorageDevice {
   name: string;
   model: string;
   sizeGb: number;
-  usedPct: number;
+  usedPct: number | null;
   tempC: number | null;
   wearPct: number | null;
   smartOk: boolean | null;
+  mountpoints: string[];
+}
+
+export interface SmartResult {
+  healthy: boolean | null;
+  wearPct: number | null;
 }
 
 export interface StorageState {

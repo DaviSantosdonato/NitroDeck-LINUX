@@ -6,3 +6,4 @@ description = "Adapters somente-leitura para sensores de hardware (procfs/sysfs)
 
 [dependencies]
 nitrodeck-core = { path = "../nitrodeck-core" }
+serde_json = "1"

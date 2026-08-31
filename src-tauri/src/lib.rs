@@ -59,6 +59,16 @@ fn set_process_memory_limit(pid: u32, memory_mb: Option<u32>) -> Result<(), Stri
 }
 
 #[tauri::command]
+fn check_smart(device: String) -> Result<nitrodeck_core::SmartResult, String> {
+    nitrodeck_hardware::storage::check_smart(&device)
+}
+
+#[tauri::command]
+fn run_fstrim(mountpoint: String) -> Result<String, String> {
+    nitrodeck_hardware::storage::run_fstrim(&mountpoint)
+}
+
+#[tauri::command]
 fn launch_with_limits(
     command: String,
     memory_mb: Option<u32>,
@@ -115,7 +125,9 @@ pub fn run() {
             revoke_hardware_risk,
             install_hardware_driver,
             set_generic_fan_pwm,
-            set_process_memory_limit
+            set_process_memory_limit,
+            check_smart,
+            run_fstrim
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

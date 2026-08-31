@@ -9,6 +9,7 @@
 //! nunca escala privilégio (usa o grupo suplementar do próprio usuário via
 //! `sg`, nunca root).
 
+mod amdgpu;
 pub mod battery;
 pub mod cpu;
 pub mod extras;
@@ -24,7 +25,7 @@ pub mod model;
 pub mod power;
 pub mod processes;
 mod sg;
-mod storage;
+pub mod storage;
 pub mod temperatures;
 
 use nitrodeck_core::{HardwareSnapshot, SystemInfo};
