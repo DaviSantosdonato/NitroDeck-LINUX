@@ -2139,7 +2139,7 @@ dependencies = [
 
 [[package]]
 name = "nitrodeck-linux"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nitrodeck-core",
  "nitrodeck-hardware",

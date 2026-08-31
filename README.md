@@ -116,3 +116,7 @@ packaging/                  # Scripts e unidades systemd empacotados no .deb/.rp
 ## Licença
 
 Ainda não definida para o código deste repositório — se for redistribuir, confirme com o autor antes. O driver em `driver/linuwu-sense/` é GPL-3.0 (herdada do projeto original, ver `LICENSE` nesse diretório).
+
+## Autoria e originalidade
+
+Ver [`CERTIFICADO_DE_ORIGINALIDADE.md`](CERTIFICADO_DE_ORIGINALIDADE.md) — declaração de autoria do criador do projeto, com a devida transparência sobre o uso de IA no desenvolvimento e os créditos ao driver de terceiros.
