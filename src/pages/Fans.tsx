@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AlertTriangle, Fan as FanIcon } from "lucide-react";
+import { AlertTriangle, Fan as FanIcon, Thermometer } from "lucide-react";
 import type { GenericPwmChannel, HardwareSnapshot } from "../types/hardware";
 import { Card, CardHeader } from "../components/Card";
 import { StatusPill } from "../components/StatusPill";
+import { Toggle } from "../components/Toggle";
 import { UnavailablePanel } from "../components/UnavailablePanel";
+import { suggestedFanPercent } from "../lib/fanCurve";
 
 export function FansPage({ snap }: { snap: HardwareSnapshot }) {
   const { fans } = snap;
@@ -12,9 +14,12 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
   const [gpuPct, setGpuPct] = useState(fans.gpuPercent ?? fans.minManualPercent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [curveEnabled, setCurveEnabled] = useState(false);
+  const lastCurveTarget = useRef<number | null>(null);
 
   // Mantém os sliders sincronizados com o estado real quando ele muda por
-  // fora (outra sessão, ou o próprio app em outra aba/janela).
+  // fora (outra sessão, a própria curva automática, ou o app em outra
+  // aba/janela).
   useEffect(() => {
     if (fans.mode === "manual") {
       if (fans.cpuPercent != null) setCpuPct(fans.cpuPercent);
@@ -39,6 +44,37 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
       setBusy(false);
     }
   }
+
+  async function toggleCurve(next: boolean) {
+    setCurveEnabled(next);
+    if (!next) {
+      lastCurveTarget.current = null;
+      await apply(0, 0);
+    }
+  }
+
+  async function backToAuto() {
+    setCurveEnabled(false);
+    lastCurveTarget.current = null;
+    await apply(0, 0);
+  }
+
+  // Curva automática de verdade: enquanto ligada, recalcula o alvo a cada
+  // snapshot (a partir do sensor mais quente) e só escreve na ventoinha
+  // quando o alvo muda — nunca fica reenviando o mesmo valor a cada 2s.
+  useEffect(() => {
+    if (!curveEnabled) return;
+    const sensors = snap.temperatures.sensors;
+    if (sensors.length === 0) return;
+    const maxTemp = Math.max(...sensors.map((s) => s.tempC));
+    const raw = suggestedFanPercent(maxTemp);
+    const target = raw === 0 ? 0 : Math.max(fans.minManualPercent, raw);
+    if (target !== lastCurveTarget.current) {
+      lastCurveTarget.current = target;
+      apply(target, target);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curveEnabled, snap.temperatures.sensors, fans.minManualPercent]);
 
   if (!fans.monitoringAvailable) {
     return (
@@ -76,6 +112,24 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
         </div>
       </Card>
 
+      {fans.controlAvailable && (
+        <Card>
+          <CardHeader
+            title="Curva automática por temperatura"
+            subtitle="Enquanto ligada, a própria ventoinha acompanha o sensor mais quente — sem você precisar mexer em nada"
+            right={<Toggle checked={curveEnabled} onChange={toggleCurve} disabled={busy} />}
+          />
+          <div className="flex items-start gap-2 text-[11px] text-[var(--text-2)] leading-relaxed">
+            <Thermometer size={13} className="mt-0.5 shrink-0" />
+            <p>
+              Abaixo de 55°C fica no automático do firmware; a partir daí sobe em degraus (30/50/70/100%) conforme a
+              temperatura mais alta do sistema. É a mesma estimativa mostrada na Visão Geral, só que agora aplicada
+              de verdade. Mexer nos sliders abaixo desliga a curva automática.
+            </p>
+          </div>
+        </Card>
+      )}
+
       {!fans.controlAvailable ? (
         <Card>
           <CardHeader title="Controle manual" />
@@ -89,10 +143,10 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
         <Card>
           <CardHeader
             title="Controle manual"
-            subtitle={`Modo atual: ${fans.mode === "auto" ? "Automático (firmware)" : "Manual"}`}
+            subtitle={`Modo atual: ${curveEnabled ? "Curva automática" : fans.mode === "auto" ? "Automático (firmware)" : "Manual"}`}
             right={
               <button
-                onClick={() => apply(0, 0)}
+                onClick={backToAuto}
                 disabled={busy}
                 className="text-xs font-medium px-3 py-1.5 rounded-full disabled:opacity-50"
                 style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
@@ -107,30 +161,40 @@ export function FansPage({ snap }: { snap: HardwareSnapshot }) {
               label="CPU"
               value={cpuPct}
               min={fans.minManualPercent}
-              onChange={setCpuPct}
+              onChange={(v) => {
+                setCurveEnabled(false);
+                lastCurveTarget.current = null;
+                setCpuPct(v);
+              }}
             />
             <FanSlider
               label="GPU"
               value={gpuPct}
               min={fans.minManualPercent}
-              onChange={setGpuPct}
+              onChange={(v) => {
+                setCurveEnabled(false);
+                lastCurveTarget.current = null;
+                setGpuPct(v);
+              }}
             />
           </div>
 
           <div className="flex items-center justify-between mt-5">
             <p className="text-[11px] text-[var(--text-2)] max-w-sm leading-relaxed">
-              Valores abaixo de {fans.minManualPercent}% são bloqueados por segurança (margem interna nossa, não é um
-              mínimo garantido pelo fabricante). Fechar o app tenta voltar ao automático; se ele travar sem
-              conseguir, um watchdog independente (serviço systemd) reverte sozinho em até 5 segundos.
+              {curveEnabled
+                ? "Os valores acima estão sendo definidos pela curva automática, ao vivo."
+                : `Valores abaixo de ${fans.minManualPercent}% são bloqueados por segurança (margem interna nossa, não é um mínimo garantido pelo fabricante). Fechar o app tenta voltar ao automático; se ele travar sem conseguir, um watchdog independente (serviço systemd) reverte sozinho em até 5 segundos.`}
             </p>
-            <button
-              onClick={() => apply(cpuPct, gpuPct)}
-              disabled={busy}
-              className="shrink-0 text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              {busy ? "Aplicando..." : "Aplicar manual"}
-            </button>
+            {!curveEnabled && (
+              <button
+                onClick={() => apply(cpuPct, gpuPct)}
+                disabled={busy}
+                className="shrink-0 text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50"
+                style={{ background: "var(--accent)", color: "#fff" }}
+              >
+                {busy ? "Aplicando..." : "Aplicar manual"}
+              </button>
+            )}
           </div>
 
           {error && (

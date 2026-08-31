@@ -17,6 +17,7 @@ import { StatusPill } from "../components/StatusPill";
 import { Spotlight } from "../components/Spotlight";
 import { EventFeed } from "../components/EventFeed";
 import { celsius, pct, watts } from "../lib/format";
+import { suggestedFanPercent } from "../lib/fanCurve";
 
 function primaryGpuName(snap: HardwareSnapshot): string | null {
   if (snap.gpuDiscrete.meta.status !== "unavailable") return snap.gpuDiscrete.name;
@@ -160,14 +161,6 @@ function ThermalSpotlight({ snap }: { snap: HardwareSnapshot }) {
       }
     />
   );
-}
-
-function suggestedFanPercent(maxTempC: number): number {
-  if (maxTempC < 55) return 0;
-  if (maxTempC < 65) return 30;
-  if (maxTempC < 75) return 50;
-  if (maxTempC < 85) return 70;
-  return 100;
 }
 
 // Escala fixa 20-100°C só para posicionar a barra de calor — não é limite
