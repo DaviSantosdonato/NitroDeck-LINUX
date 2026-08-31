@@ -1,41 +1,79 @@
 # NitroDeck Linux
 
-**Gerenciador de hardware nativo para notebooks Linux** — leitura em tempo real de CPU, GPU, memória, bateria, armazenamento, temperaturas e processos, com controle de verdade (ventoinhas, energia, bateria) onde o hardware permite. Construído com Tauri 2 + Rust + React, roda leve, nunca pede root pra abrir, e nunca inventa um número quando não consegue ler algo de verdade.
+**Gerenciador de hardware nativo para notebooks e desktops Linux** — leitura em tempo real de CPU, GPU, memória, bateria, armazenamento, temperaturas e processos, com controle de verdade (ventoinhas, energia, bateria, memória) onde o hardware permite. Construído com Tauri 2 + Rust + React, roda leve, nunca pede root pra abrir, e nunca inventa um número quando não consegue ler algo de verdade.
 
-Feito originalmente para o Acer Nitro ANV15-52 (via o driver de comunidade [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense)), mas a parte de monitoramento funciona em **qualquer PC Linux** — o app detecta o hardware sozinho.
+Feito originalmente para o Acer Nitro ANV15-52, mas a parte de monitoramento — e boa parte do controle — funciona em **qualquer PC Linux**: o app detecta o hardware sozinho, sem configuração manual.
 
 ---
+
+## Autoria
+
+- **Criado por [Davi Santos Donato](https://github.com/DaviSantosdonato)** — dono do projeto, do hardware de referência (o notebook usado pra validar tudo) e das decisões de produto e segurança.
+- **Desenvolvido em par com o Claude (Anthropic)**, agente de IA que escreveu o código, testou no hardware real via terminal e câmera de tela, e documentou as decisões técnicas junto com o autor.
+- **Driver de ventoinha/bateria da Acer**: fork do projeto [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense), de **0x7375646F** — engenharia reversa dos métodos WMI/ACPI da Acer, sem a qual o controle de hardware deste app não existiria. Créditos completos e licença original preservados em [`driver/linuwu-sense/ATTRIBUTION.md`](driver/linuwu-sense/ATTRIBUTION.md).
 
 ## O que ele faz
 
 | Tela | O que mostra | Controle real? |
 |---|---|---|
-| **Visão Geral** | Resumo do PC, temperaturas de todos os sensores agrupadas, sugestão de % de ventoinha | — |
-| **Processador** | Uso, frequência, temperatura, potência (RAPL), governor de CPU, Turbo Boost, limites de potência PL1/PL2 | ✅ governor, turbo, PL1/PL2 |
-| **Gráficos** | GPU integrada e dedicada — identificação sempre; uso/VRAM/temperatura/potência quando o driver expõe | — |
-| **Memória** | Uso de RAM e swap ao vivo | — |
-| **Bateria** | Percentual, ciclos, saúde, limite de carga (80%), calibração, carregamento via USB | ✅ no hardware suportado |
+| **Visão Geral** | Destaque do status térmico (temperatura mais alta + sugestão de ventoinha), 4 indicadores rápidos (CPU/GPU/memória/bateria), GPU dedicada, armazenamento, ventoinhas, perfil de energia, todas as temperaturas agrupadas por componente, e um feed de atividade com eventos reais (troca de perfil, driver carregado, alerta de temperatura, modo de ventoinha) | — |
+| **Processador** | Uso, frequência, temperatura por núcleo, potência real (RAPL), modelo detectado | ✅ governor de CPU, Turbo Boost, limites de potência PL1/PL2 |
+| **Gráficos** | GPU integrada e dedicada — identificação sempre; uso/VRAM/temperatura/potência quando o driver expõe (testado com NVIDIA via NVML) | — |
+| **Memória** | Uso de RAM e swap ao vivo, tabela de processos ordenada por consumo | ✅ limitar memória de um processo já em execução (cgroups) |
+| **Bateria** | Percentual, ciclos, saúde, tempo restante | ✅ limite de carga (80%), calibração, carregamento via USB no hardware suportado |
 | **Armazenamento** | Discos, uso, temperatura | — |
-| **Ventoinhas** | RPM real; controle manual com piso de segurança, volta automática se o app cair — via WMI da Acer (`linuwu_sense`) ou via `hwmon` pwm padrão do kernel (nct6775/it87/`dell-smm-hwmon`, sem depender de fabricante) | ✅ no hardware suportado |
-| **Energia** | Perfil ativo (Economia/Equilibrado/Desempenho), troca real via `power-profiles-daemon` | ✅ |
-| **Processos** | Lista por CPU/memória, encerrar processo, abrir programa com teto de memória/CPU (cgroups) e GPU dedicada (PRIME offload) | ✅ |
+| **Ventoinhas** | RPM real; controle manual com piso de segurança, volta automática se o app cair | ✅ via WMI da Acer (`linuwu_sense`) **ou** via `hwmon` pwm padrão do kernel (nct6775/it87/`dell-smm-hwmon` — não depende de fabricante) |
+| **Energia** | Perfil ativo (Economia/Equilibrado/Desempenho) | ✅ troca real via `power-profiles-daemon` |
+| **Processos** | Lista por CPU/memória em tempo real | ✅ encerrar processo, limitar memória de um já em execução, abrir programa novo com teto de memória/CPU e GPU dedicada (PRIME offload) |
 | **Extras** | Recursos do driver Acer (luz do teclado, som de boot, LCD override) | ✅ no hardware suportado |
+| **Configurações** | Cor de destaque, status do modelo detectado, instalação do driver, ativação de controles em modelo não validado | ✅ |
+
+## Em quais sistemas e PCs funciona
+
+**Formatos de instalação** (baixe em [Releases](../../releases)):
+
+| Formato | Cobre | Instala sozinho o driver/watchdog/autostart? |
+|---|---|---|
+| `.deb` | Debian, Ubuntu, Parrot OS, Mint, Pop!_OS e derivados | ✅ |
+| `.rpm` | Fedora, openSUSE, RHEL e derivados | ✅ |
+| `AppImage` | **Qualquer distro Linux** com glibc — Arch, Manjaro, NixOS, Void, etc. Não precisa instalar nada, roda direto | ❌ (é só o executável; sem privilégio pra provisionar systemd/driver) |
+
+**Por hardware:**
+
+| Hardware | Monitoramento | Controle |
+|---|---|---|
+| **Qualquer CPU/PC Linux** (Intel ou AMD, notebook ou desktop) | ✅ CPU, memória, disco, temperaturas, processos | ✅ governor de CPU, perfil de energia, limitar memória de processo — tudo genérico, sem driver de terceiros |
+| **Intel** (Turbo Boost, RAPL) | ✅ | ✅ limites de potência PL1/PL2 (equivalente a "overclock" nesse tipo de chip móvel) |
+| **NVIDIA** (com driver instalado) | ✅ uso/VRAM/temperatura/potência via NVML | ✅ escolher GPU dedicada por aplicativo (PRIME offload) |
+| **Qualquer placa com chip hwmon pwm** (nct6775, it87, `dell-smm-hwmon`) | ✅ RPM | ✅ controle manual de ventoinha |
+| **Acer Nitro ANV15-52** (modelo de referência) | ✅ tudo | ✅ tudo, automático desde a instalação |
+| **Outro Acer Nitro/Predator** com WMI compatível | ✅ tudo | ✅ ventoinha/bateria/extras, mas exige confirmação explícita na tela (não validamos esse modelo exato) |
+| **Dell, Lenovo, Asus, HP** | ✅ tudo que é genérico | ⚠️ parcial — só ventoinha via hwmon, quando o chip suportar. Cada fabricante usa um mecanismo próprio (`thinkpad_acpi`, `asus-wmi`, `hp-wmi`) ainda não implementado, porque exigiria validação em hardware real que não temos |
 
 ## Instalação
 
-Baixe o `.deb` mais recente em [Releases](../../releases) e instale:
-
+**Debian/Ubuntu/Parrot:**
 ```bash
-sudo apt install ./NitroDeck-Linux_*.deb
+sudo apt install ./NitroDeck-Linux_0.1.0_amd64.deb
 ```
 
-Isso já deixa tudo pronto sozinho:
-- Ícone no menu de aplicativos (nada de terminal)
-- Comando `nitrodeck` no terminal, se preferir (abre em segundo plano, devolve o prompt na hora)
+**Fedora/openSUSE:**
+```bash
+sudo dnf install ./NitroDeck-Linux-0.1.0-1.x86_64.rpm
+```
+
+**Qualquer outra distro (AppImage, sem instalar):**
+```bash
+chmod +x "NitroDeck Linux_0.1.0_amd64.AppImage"
+./"NitroDeck Linux_0.1.0_amd64.AppImage"
+```
+
+O `.deb`/`.rpm` já deixam tudo pronto sozinhos:
+- Ícone no menu de aplicativos
+- Comando `nitrodeck` no terminal (abre em segundo plano, devolve o prompt na hora — igual `code`)
 - Abre automaticamente no login
 - Serviço de segurança das ventoinhas rodando em segundo plano desde a instalação
-
-Pra abrir: clique no ícone "NitroDeck Linux" no menu, ou digite `nitrodeck` num terminal.
+- No Acer Nitro ANV15-52: driver de hardware instalado e controles liberados automaticamente
 
 ### Compilar do zero
 
@@ -43,28 +81,19 @@ Pra abrir: clique no ícone "NitroDeck Linux" no menu, ou digite `nitrodeck` num
 git clone https://github.com/DaviSantosdonato/NitroDeck-LINUX.git
 cd NitroDeck-LINUX
 npm install
-npm run tauri build -- --bundles deb
-sudo apt install ./src-tauri/target/release/bundle/deb/*.deb
+npm run tauri build -- --bundles deb,rpm,appimage
 ```
 
-Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia oficial](https://v2.tauri.app/start/prerequisites/)). Pra compilar o driver de hardware junto (opcional, só relevante em Acer Nitro/Predator), também precisa de `dkms` e os headers do seu kernel instalados.
+Requer Node.js, Rust (`cargo`) e as dependências de sistema do Tauri ([guia oficial](https://v2.tauri.app/start/prerequisites/)). Pra compilar o driver de hardware junto (opcional, só relevante em Acer Nitro/Predator), também precisa de `dkms` e os headers do seu kernel instalados. Pra gerar `.rpm`, precisa do pacote `rpm` instalado mesmo em distros baseadas em Debian.
 
 ## Por que confiar nele
 
-- **Nunca roda como root.** A janela é sempre um processo normal do seu usuário. Os poucos ajustes que exigem root (3 no total) pedem sua senha via `pkexec` a cada uso — nunca de forma silenciosa, nunca com sudoers sem senha.
+- **Nunca roda como root.** A janela é sempre um processo normal do seu usuário. Os poucos ajustes que exigem root pedem sua senha via `pkexec` a cada uso — nunca de forma silenciosa, nunca com sudoers sem senha.
 - **Nunca inventa leitura.** Se um sensor não existe ou não responde, a tela mostra "indisponível" — nunca um zero ou um valor de exemplo disfarçado de dado real.
-- **Controle de hardware é opt-in por modelo.** Ventoinha, bateria e extras só ficam ativos automaticamente no modelo exato que validamos (Nitro ANV15-52). Em outro Acer Nitro/Predator com o mesmo driver, o app mostra um aviso claro e só libera se você confirmar explicitamente que quer usar por sua conta — nunca por padrão.
+- **Controle de hardware é opt-in por modelo.** Ventoinha, bateria e extras da Acer só ficam ativos automaticamente no modelo exato que validamos (Nitro ANV15-52). Em outro Acer Nitro/Predator com o mesmo driver, o app mostra um aviso claro e só libera se você confirmar explicitamente que quer usar por sua conta — nunca por padrão.
 - **Ventoinha tem rede de segurança dupla.** Fechar o app tenta voltar pro automático; se travar, um serviço systemd independente força um piso seguro sozinho em poucos segundos — mesmo com o app fechado ou crashado.
-- **Escrita de hardware nunca escala privilégio à toa.** Os campos que só precisam de grupo (ventoinha, bateria, extras) usam o grupo suplementar do driver via `sg`, nunca `sudo`/root.
-
-## Compatibilidade
-
-- **Qualquer distro Linux com um ambiente gráfico** (testado em Parrot OS/Debian, deve funcionar em qualquer sistema baseado em systemd + GTK/Wayland ou X11).
-- **Monitoramento**: funciona em qualquer PC — CPU, memória, disco, temperaturas e processos são lidos via `/proc`/`/sys`, sem dependência de fabricante.
-- **Ventoinha via `hwmon` padrão** (`pwm`/`pwm_enable`): funciona em qualquer chip que exponha essa interface documentada do kernel — comum em placas-mãe (nct6775, it87) e em alguns notebooks Dell (`dell-smm-hwmon`). Não exige confirmação de modelo, porque não é código específico de fabricante nem engenharia reversa — é o mesmo mecanismo que ferramentas como `fancontrol`/`lm-sensors` usam.
-- **Controle de ventoinha/bateria/extras da Acer**: usa um fork do driver [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) (créditos em `driver/linuwu-sense/ATTRIBUTION.md`), trazido pra dentro deste repositório e compilado via DKMS. No Nitro ANV15-52 ele instala e carrega sozinho junto do app; em outro Acer Nitro/Predator com WMI compatível, aparece como ação explícita em Configurações, com aviso de que não foi validado naquele modelo exato.
-- **Lenovo, Asus, HP e outros**: ainda sem controle implementado (fora ventoinha via hwmon, quando o chip suportar). Cada fabricante usa um mecanismo próprio (`thinkpad_acpi`, `asus-wmi`, `hp-wmi`) que exigiria validação individual antes de oferecer escrita.
-- **GPU dedicada NVIDIA**: telemetria completa (uso/VRAM/temperatura/potência) requer o driver proprietário da NVIDIA instalado à parte.
+- **Escrita de hardware nunca escala privilégio à toa.** Ventoinha/bateria/extras da Acer usam o grupo suplementar do driver via `sg`; limite de memória de processo usa a delegação de cgroups que o próprio systemd já dá à sua sessão — nenhum dos dois precisa de root.
+- **Nada de reverse engineering às cegas.** Todo controle de hardware usa uma interface documentada (kernel `hwmon`, `power-profiles-daemon`, RAPL) ou um driver de comunidade já validado por terceiros (Linuwu-Sense) — nunca código escrito adivinhando comportamento de firmware não documentado.
 
 ## Arquitetura
 
@@ -73,9 +102,10 @@ crates/nitrodeck-core/      # Tipos compartilhados (espelham src/types/hardware.
 crates/nitrodeck-hardware/  # Leitura/escrita real de hardware (procfs/sysfs/comandos)
 src-tauri/                  # Shell Tauri, comandos expostos ao frontend
 src/                        # React + TypeScript + Tailwind
-packaging/                  # Scripts e unidades systemd empacotados no .deb
+driver/linuwu-sense/        # Fork do driver da Acer (DKMS), com créditos ao projeto original
+packaging/                  # Scripts e unidades systemd empacotados no .deb/.rpm
 ```
 
 ## Licença
 
-Ainda não definida — se for redistribuir, confirme com o autor antes.
+Ainda não definida para o código deste repositório — se for redistribuir, confirme com o autor antes. O driver em `driver/linuwu-sense/` é GPL-3.0 (herdada do projeto original, ver `LICENSE` nesse diretório).
